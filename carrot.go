@@ -33,5 +33,7 @@ func checkType(t, n, o reflect.Value) {
 }
 
 func doPatch(t, n, o reflect.Value) bool {
+	var v = []byte{0xcc, 0xcc, 0xcc, 0xcc, 0xcc}
+	disas(v)
 	return false
 }
