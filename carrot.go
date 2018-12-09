@@ -2,7 +2,10 @@ package carrot
 
 import (
 	"reflect"
+	"sync"
 )
+
+var lock = sync.Mutex{}
 
 // Patch is to patch function
 //    targetFunc: func to replace
@@ -15,23 +18,41 @@ func Patch(targetFunc, newFunc, originalFunc interface{}) bool {
 
 	checkType(t, n, o)
 
+	lock.Lock()
+	defer lock.Unlock()
+
 	if isPatched(t) || isPatched(o) {
 		return false
 	}
 
-	return doPatch(t, n, o)
+	return patch(t, n, o)
 }
 
 // IsPatched to test wether f is patched
 func IsPatched(f interface{}) bool {
+	lock.Lock()
+	defer lock.Unlock()
+
 	return isPatched(reflect.ValueOf(f))
 }
 
 // Unpatch target
 func Unpatch(target interface{}) {
+	lock.Lock()
+	defer lock.Unlock()
+
 	t := reflect.ValueOf(target)
 	if isPatched(t) {
 		return
 	}
 
+	unpatch(t)
+}
+
+// UnpatchAll func
+func UnpatchAll() {
+	lock.Lock()
+	defer lock.Unlock()
+
+	unpatchAll()
 }

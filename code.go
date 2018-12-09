@@ -30,6 +30,5 @@ func disas(bytes []byte) {
 
 	u := C.udis_init(code, length)
 	C.udis_print(u)
-
-	defer C.free(unsafe.Pointer(u))
+	C.udis_final(u)
 }

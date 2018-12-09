@@ -2,11 +2,9 @@ package carrot
 
 import (
 	"reflect"
-	"sync"
 )
 
 type patchContext struct {
-	isTarget          bool // true - targetFunc    false - originalFunc
 	targetFuncBytes   []byte
 	originalFuncBytes []byte
 	newFunc           *reflect.Value
@@ -14,9 +12,8 @@ type patchContext struct {
 }
 
 var (
-	lock = sync.Mutex{}
-
 	patched = make(map[uintptr]patchContext)
+	origins = make(map[uintptr]bool)
 )
 
 func checkType(t, n, o reflect.Value) {
@@ -30,27 +27,38 @@ func checkType(t, n, o reflect.Value) {
 }
 
 func isPatched(t reflect.Value) bool {
-	_, ok := patched[t.Pointer()]
-	return ok
-}
+	if _, ok := patched[t.Pointer()]; ok {
+		return true
+	}
 
-func doPatch(t, n, o reflect.Value) bool {
-	lock.Lock()
-	defer lock.Unlock()
+	if _, ok := origins[t.Pointer()]; ok {
+		return true
+	}
 
-	disas(memoryAccess(t.Pointer(), 200))
 	return false
 }
 
-func unPatch(t reflect.Value) {
-	lock.Lock()
-	defer lock.Unlock()
-
+func unpatch(t reflect.Value) {
 	p, ok := patched[t.Pointer()]
 	if !ok {
 		return
 	}
 
-	delete(patched, t.Pointer())
-	delete(patched, (*p.originalFunc).Pointer())
+	doUnpatch(t.Pointer(), p)
+}
+
+func patch(t, n, o reflect.Value) bool {
+	disas(memoryAccess(t.Pointer(), 200))
+	return false
+}
+
+func unpatchAll() {
+	for t, p := range patched {
+		doUnpatch(t, p)
+	}
+}
+
+func doUnpatch(t uintptr, p patchContext) {
+	delete(patched, t)
+	delete(origins, (*p.originalFunc).Pointer())
 }

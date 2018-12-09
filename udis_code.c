@@ -23,19 +23,23 @@ static udis_t* udis_init(const uint8_t* code, size_t len) {
 	return u;
 }
 
+static void udis_final(udis_t* u) {
+	free((void*)u);
+}
+
 static void udis_print(udis_t* u) {
 	int len = 0;
 	while(len = ud_disassemble(&u->ud)) {
-		const char* ins = ud_insn_asm(&u->ud);
-		char* code = (char*)ud_insn_off(&u->ud);
-        printf("0x%016X %-32s %2d: ", code, ins, len);
-		while (len-- > 0) {
-			printf("%02X ", (uint8_t)(*code++));
-		}
-		printf("\n");
-
-		if (strcmp(ins, "ret") == 0) {
+		if (ud_insn_mnemonic(&u->ud) == UD_Iint3) {
 			break;
 		}
+
+		const char* ins = ud_insn_asm(&u->ud);
+		char* addr = (char*)ud_insn_off(&u->ud);
+        printf("0x%016X:%-2d %-32s", addr, len, ins);
+		while (len-- > 0) {
+			printf("%02X ", (uint8_t)(*addr++));
+		}
+		printf("\n");
     }
 }
