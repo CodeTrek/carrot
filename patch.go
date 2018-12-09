@@ -12,8 +12,10 @@ type patchContext struct {
 }
 
 var (
-	patched = make(map[uintptr]patchContext)
-	origins = make(map[uintptr]bool)
+	patched       = make(map[uintptr]patchContext)
+	origins       = make(map[uintptr]bool)
+	freeCodePices = initCodePage(4)
+	usedCodePices = make(map[uintptr][]byte)
 )
 
 func checkType(t, n, o reflect.Value) {
@@ -48,7 +50,7 @@ func unpatch(t reflect.Value) {
 }
 
 func patch(t, n, o reflect.Value) bool {
-	disas(memoryAccess(t.Pointer(), 200))
+	//	disas(memoryAccess(o.Pointer(), 50))
 	return false
 }
 
