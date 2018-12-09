@@ -79,7 +79,7 @@ type value struct {
 	ptr unsafe.Pointer
 }
 
-func getFuncAddr(v reflect.Value) uintptr {
+func location(v reflect.Value) uintptr {
 	return uintptr((*value)(unsafe.Pointer(&v)).ptr)
 }
 

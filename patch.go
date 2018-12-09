@@ -52,7 +52,7 @@ func unpatch(t reflect.Value) {
 func patch(t, r, b reflect.Value) bool {
 	//	disas(memoryAccess(b.Pointer(), 50))
 
-	jmp2r := jmpTo(getFuncAddr(r))
+	jmp2r := jmpTo(location(r))
 	//	pices := allocPices()
 
 	copyToLocation(t.Pointer(), jmp2r)
