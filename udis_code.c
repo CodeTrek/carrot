@@ -47,7 +47,7 @@ static void udis_print(udis_t* u) {
 	int len = 0;
 	while(len = ud_disassemble(&u->ud)) {
 		if (ud_insn_mnemonic(&u->ud) == UD_Iint3) {
-//			break;
+			break;
 		}
 
 		const char* ins = ud_insn_asm(&u->ud);

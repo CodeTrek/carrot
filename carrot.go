@@ -8,27 +8,27 @@ import (
 var lock = sync.Mutex{}
 
 // Patch is to patch function
-//    targetFunc: func to replace
-//    newFunc: new func
-//    originalFunc: to recv original target func
-func Patch(targetFunc, newFunc, originalFunc interface{}) bool {
-	t := reflect.ValueOf(targetFunc)
-	n := reflect.ValueOf(newFunc)
-	o := reflect.ValueOf(originalFunc)
+//    target: func to replace
+//    replacement: new func
+//    bridge: to recv original target func pointer
+func Patch(target, replacement, bridge interface{}) bool {
+	t := reflect.ValueOf(target)
+	r := reflect.ValueOf(replacement)
+	b := reflect.ValueOf(bridge)
 
-	checkType(t, n, o)
+	checkType(t, r, b)
 
 	lock.Lock()
 	defer lock.Unlock()
 
-	if isPatched(t) || isPatched(o) {
+	if isPatched(t) || isPatched(b) {
 		return false
 	}
 
-	return patch(t, n, o)
+	return patch(t, r, b)
 }
 
-// IsPatched to test wether f is patched
+// IsPatched to test wether f is patched or used as bridge
 func IsPatched(f interface{}) bool {
 	lock.Lock()
 	defer lock.Unlock()

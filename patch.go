@@ -5,26 +5,26 @@ import (
 )
 
 type patchContext struct {
-	targetFuncBytes   []byte
-	originalFuncBytes []byte
-	newFunc           *reflect.Value
-	originalFunc      *reflect.Value
+	targetBytes []byte
+	bridgeBytes []byte
+	piceBytes   []byte
+
+	replacement *reflect.Value
+	bridge      *reflect.Value
 }
 
 var (
-	patched       = make(map[uintptr]patchContext)
-	origins       = make(map[uintptr]bool)
-	freeCodePices = initCodePage(4)
-	usedCodePices = make(map[uintptr][]byte)
+	patched = make(map[uintptr]patchContext)
+	origins = make(map[uintptr]bool)
 )
 
-func checkType(t, n, o reflect.Value) {
-	if t.Kind() != reflect.Func || n.Kind() != reflect.Func || o.Kind() != reflect.Func {
-		panic("targetFunc, newFunc, originalFunc MUST be a func")
+func checkType(t, r, b reflect.Value) {
+	if t.Kind() != reflect.Func || r.Kind() != reflect.Func || b.Kind() != reflect.Func {
+		panic("target, replacement, bridge MUST be a func")
 	}
 
-	if t.Type() != n.Type() || t.Type() != o.Type() {
-		panic("targetFunc, newFunc, originalFunc MUST be the same type")
+	if t.Type() != r.Type() || t.Type() != b.Type() {
+		panic("target, replacement, bridge MUST be the same type")
 	}
 }
 
@@ -49,8 +49,13 @@ func unpatch(t reflect.Value) {
 	doUnpatch(t.Pointer(), p)
 }
 
-func patch(t, n, o reflect.Value) bool {
-	//	disas(memoryAccess(o.Pointer(), 50))
+func patch(t, r, b reflect.Value) bool {
+	//	disas(memoryAccess(b.Pointer(), 50))
+
+	jmp2r := jmpTo(getFuncAddr(r))
+	//	pices := allocPices()
+
+	copyToLocation(t.Pointer(), jmp2r)
 	return false
 }
 
@@ -62,5 +67,5 @@ func unpatchAll() {
 
 func doUnpatch(t uintptr, p patchContext) {
 	delete(patched, t)
-	delete(origins, (*p.originalFunc).Pointer())
+	delete(origins, (*p.replacement).Pointer())
 }
