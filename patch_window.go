@@ -7,8 +7,6 @@ import (
 	"unsafe"
 )
 
-const PAGE_EXECUTE_READWRITE = 0x40
-
 var procVirtualProtect = syscall.NewLazyDLL("kernel32.dll").NewProc("VirtualProtect")
 
 func virtualProtect(lpAddress uintptr, dwSize int, flNewProtect uint32, lpflOldProtect unsafe.Pointer) error {
@@ -28,7 +26,9 @@ func virtualProtect(lpAddress uintptr, dwSize int, flNewProtect uint32, lpflOldP
 // It copies a slice to a raw memory location, disabling all memory protection before doing so.
 func copyToLocation(location uintptr, data []byte) {
 	var oldPerms uint32
-	err := virtualProtect(location, len(data), PAGE_EXECUTE_READWRITE, unsafe.Pointer(&oldPerms))
+
+	// PAGE_EXECUTE_READWRITE = 0x40
+	err := virtualProtect(location, len(data), 0x40, unsafe.Pointer(&oldPerms))
 	if err != nil {
 		panic(err)
 	}
