@@ -12,20 +12,20 @@ struct udis {
 
 typedef struct udis  udis_t;
 
-static uint8_t* code_page = NULL;
-static uintptr_t udis_init_and_get_code_page(int page_count, int page_size)
+static uint8_t* bridge_ptr = NULL;
+static uintptr_t udis_init_and_get_bridge(int page_count, int page_size)
 {
 	if (page_count <= 0 || page_size <= 0) {
 		return (uintptr_t)NULL;
 	}
 
-	if (code_page == NULL) {
+	if (bridge_ptr == NULL) {
 		int size = page_size * (page_count + 1);
-		code_page = (uint8_t*)malloc(size);
-		memset(code_page, 0xcc, size);
+		bridge_ptr = (uint8_t*)malloc(size);
+		memset(bridge_ptr, 0xcc, size);
 	}
 
-	return ((uintptr_t)code_page & ~(page_size - 1)) + page_size;
+	return ((uintptr_t)bridge_ptr & ~(page_size - 1)) + page_size;
 }
 
 static udis_t* udis_init(const uint8_t* code, size_t len) {

@@ -27,13 +27,13 @@ func virtualProtect(lpAddress uintptr, dwSize int, flNewProtect uint32, lpflOldP
 // aww yeah
 // It copies a slice to a raw memory location, disabling all memory protection before doing so.
 func copyToLocation(location uintptr, data []byte) {
-	f := memoryAccess(location, len(data))
-
 	var oldPerms uint32
 	err := virtualProtect(location, len(data), PAGE_EXECUTE_READWRITE, unsafe.Pointer(&oldPerms))
 	if err != nil {
 		panic(err)
 	}
+
+	f := memoryAccess(location, len(data))
 	copy(f, data[:])
 
 	// VirtualProtect requires you to pass in a pointer which it can write the

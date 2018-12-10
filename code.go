@@ -20,16 +20,16 @@ import (
 const piceSize int = 32
 
 var (
-	freeCodePices = initCodePage(4)
-	usedCodePices = make(map[uintptr][]byte)
+	freeBridgeList = initBridge(4)
+	usedBridgeMap  = make(map[uintptr][]byte)
 )
 
 func pageStart(ptr uintptr) uintptr {
 	return ptr & ^(uintptr(syscall.Getpagesize() - 1))
 }
 
-func initCodePage(pageCount int) *list.List {
-	ptr := uintptr(C.udis_init_and_get_code_page(C.int(pageCount), C.int(syscall.Getpagesize())))
+func initBridge(pageCount int) *list.List {
+	ptr := uintptr(C.udis_init_and_get_bridge(C.int(pageCount), C.int(syscall.Getpagesize())))
 	if ptr == 0 {
 		panic("init failed\n")
 	}
@@ -45,35 +45,6 @@ func initCodePage(pageCount int) *list.List {
 	return l
 }
 
-func memoryAccess(p uintptr, len int) []byte {
-	// 这里直接给足够大的访问权限，只要不是真的去读取就不会有问题
-	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{
-		Data: p,
-		Len:  len,
-		Cap:  len,
-	}))
-}
-
-func allocPices() []byte {
-	if freeCodePices.Len() <= 0 {
-		panic("no more pices!")
-	}
-
-	node := freeCodePices.Front()
-	v := node.Value
-	freeCodePices.Remove(node)
-
-	vv, ok := v.([]byte)
-	if !ok {
-		panic("type failed")
-	}
-
-	ptr := uintptr(unsafe.Pointer(&vv[0]))
-	usedCodePices[ptr] = vv
-
-	return vv
-}
-
 type value struct {
 	_   uintptr
 	ptr unsafe.Pointer
@@ -83,15 +54,44 @@ func location(v reflect.Value) uintptr {
 	return uintptr((*value)(unsafe.Pointer(&v)).ptr)
 }
 
-func freePices(pice []byte) {
+func memoryAccess(p uintptr, len int) []byte {
+	// 这里直接给足够大的访问权限，只要不是真的去读取就不会有问题
+	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{
+		Data: p,
+		Len:  len,
+		Cap:  len,
+	}))
+}
+
+func allocBridge() []byte {
+	if freeBridgeList.Len() <= 0 {
+		panic("no more pices!")
+	}
+
+	node := freeBridgeList.Front()
+	v := node.Value
+	freeBridgeList.Remove(node)
+
+	vv, ok := v.([]byte)
+	if !ok {
+		panic("type failed")
+	}
+
+	ptr := uintptr(unsafe.Pointer(&vv[0]))
+	usedBridgeMap[ptr] = vv
+
+	return vv
+}
+
+func freeBridge(pice []byte) {
 	ptr := uintptr(unsafe.Pointer(&pice[0]))
-	vv, ok := usedCodePices[ptr]
+	vv, ok := usedBridgeMap[ptr]
 	if !ok {
 		panic("ptr not found!")
 	}
 
-	delete(usedCodePices, ptr)
-	freeCodePices.PushBack(vv)
+	delete(usedBridgeMap, ptr)
+	freeBridgeList.PushBack(vv)
 }
 
 func disas(bytes []byte) {

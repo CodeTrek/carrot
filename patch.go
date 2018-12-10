@@ -5,12 +5,12 @@ import (
 )
 
 type patchContext struct {
-	targetBytes []byte
-	bridgeBytes []byte
-	piceBytes   []byte
+	targetBytes   []byte
+	originalBytes []byte
+	piceBytes     []byte
 
 	replacement *reflect.Value
-	bridge      *reflect.Value
+	original    *reflect.Value
 }
 
 var (
@@ -18,13 +18,13 @@ var (
 	origins = make(map[uintptr]bool)
 )
 
-func checkType(t, r, b reflect.Value) {
-	if t.Kind() != reflect.Func || r.Kind() != reflect.Func || b.Kind() != reflect.Func {
-		panic("target, replacement, bridge MUST be a func")
+func checkType(t, r, o reflect.Value) {
+	if t.Kind() != reflect.Func || r.Kind() != reflect.Func || o.Kind() != reflect.Func {
+		panic("target, replacement, original MUST be a func")
 	}
 
-	if t.Type() != r.Type() || t.Type() != b.Type() {
-		panic("target, replacement, bridge MUST be the same type")
+	if t.Type() != r.Type() || t.Type() != o.Type() {
+		panic("target, replacement, original MUST be the same type")
 	}
 }
 
@@ -49,8 +49,8 @@ func unpatch(t reflect.Value) {
 	doUnpatch(t.Pointer(), p)
 }
 
-func patch(t, r, b reflect.Value) bool {
-	//	disas(memoryAccess(b.Pointer(), 50))
+func patch(t, r, o reflect.Value) bool {
+	disas(memoryAccess(o.Pointer(), 50))
 
 	jmp2r := jmpTo(location(r))
 	//	pices := allocPices()
