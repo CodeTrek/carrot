@@ -9,38 +9,37 @@ import (
 
 var procVirtualProtect = syscall.NewLazyDLL("kernel32.dll").NewProc("VirtualProtect")
 
-func virtualProtect(lpAddress uintptr, dwSize int, flNewProtect uint32, lpflOldProtect unsafe.Pointer) error {
+func vProtect(location uintptr, len int, attrib uint32) uint32 {
+	var tmp uint32
 	ret, _, _ := procVirtualProtect.Call(
-		lpAddress,
-		uintptr(dwSize),
-		uintptr(flNewProtect),
-		uintptr(lpflOldProtect))
+		location,
+		uintptr(len),
+		uintptr(attrib),
+		uintptr(unsafe.Pointer(&tmp)))
 	if ret == 0 {
-		return syscall.GetLastError()
+		panic(syscall.GetLastError())
 	}
-	return nil
+
+	return tmp
 }
 
-// this function is super unsafe
-// aww yeah
-// It copies a slice to a raw memory location, disabling all memory protection before doing so.
-func copyToLocation(location uintptr, data []byte) {
-	var oldPerms uint32
+func makePageExecutable(location uintptr) {
+	// PAGE_EXECUTE_READ = 0x20
+	vProtect(location, syscall.Getpagesize(), 0x20)
+}
 
+type memProtectGuard struct {
+	oldPerms uint32
+	location uintptr
+	len      int
+}
+
+func makeWritable(location uintptr, len int) *memProtectGuard {
 	// PAGE_EXECUTE_READWRITE = 0x40
-	err := virtualProtect(location, len(data), 0x40, unsafe.Pointer(&oldPerms))
-	if err != nil {
-		panic(err)
-	}
+	var oldPerms = vProtect(location, len, 0x40)
+	return &memProtectGuard{oldPerms, location, len}
+}
 
-	f := memoryAccess(location, len(data))
-	copy(f, data[:])
-
-	// VirtualProtect requires you to pass in a pointer which it can write the
-	// current memory protection permissions to, even if you don't want them.
-	var tmp uint32
-	err = virtualProtect(location, len(data), oldPerms, unsafe.Pointer(&tmp))
-	if err != nil {
-		panic(err)
-	}
+func (g *memProtectGuard) restore() {
+	vProtect(g.location, g.len, g.oldPerms)
 }

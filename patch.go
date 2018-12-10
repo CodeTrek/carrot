@@ -2,12 +2,13 @@ package carrot
 
 import (
 	"reflect"
+	"unsafe"
 )
 
 type patchContext struct {
 	targetBytes   []byte
 	originalBytes []byte
-	piceBytes     []byte
+	bridge        []byte
 
 	replacement *reflect.Value
 	original    *reflect.Value
@@ -50,13 +51,26 @@ func unpatch(t reflect.Value) {
 }
 
 func patch(t, r, o reflect.Value) bool {
-	disas(memoryAccess(o.Pointer(), 50))
-
 	jmp2r := jmpTo(location(r))
-	//	pices := allocPices()
+	bridge := allocBridgePiece()
+	bridgePtr := uintptr(unsafe.Pointer(&bridge[0]))
+	backup, _ := backupInstruction(t.Pointer(), len(jmp2r))
+	if len(bridge) < len(backup) {
+		panic("bridge piece too small")
+	}
+	jmp2t := jmpTo(location(t) + uintptr(len(backup)))
+
+	copyToLocation(bridgePtr, backup)
+	copyToLocation(bridgePtr+uintptr(len(backup)), jmp2t)
+
+	jmp2b := jmpTo(bridgePtr)
+	originalBytes := make([]byte, len(jmp2b))
+	copy(originalBytes, memoryAccess(location(o), len(jmp2b)))
 
 	copyToLocation(t.Pointer(), jmp2r)
-	return false
+	copyToLocation(o.Pointer(), jmp2b)
+
+	return true
 }
 
 func unpatchAll() {
@@ -68,4 +82,12 @@ func unpatchAll() {
 func doUnpatch(t uintptr, p patchContext) {
 	delete(patched, t)
 	delete(origins, (*p.replacement).Pointer())
+}
+
+func copyToLocation(location uintptr, data []byte) {
+	g := makeWritable(location, len(data))
+	defer g.restore()
+
+	f := memoryAccess(location, len(data))
+	copy(f, data[:])
 }

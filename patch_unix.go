@@ -6,42 +6,41 @@ import (
 	"syscall"
 )
 
-// this function is super unsafe
-// aww yeah
-// It copies a slice to a raw memory location, disabling all memory protection before doing so.
-func copyToLocation(location uintptr, data []byte) {
+func mProtect(location uintptr, attrib int) {
+	err := syscall.Mprotect(memoryAccess(location, syscall.Getpagesize()), attrib)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func makePageExecutable(location uintptr) {
+	mProtect(location, syscall.PROT_READ|syscall.PROT_EXEC)
+}
+
+type memProtectGuard struct {
+	page     uintptr
+	nextPage uintptr
+}
+
+func makeWritable(location uintptr, len int) *memProtectGuard {
 	attrib := syscall.PROT_READ | syscall.PROT_WRITE | syscall.PROT_EXEC
-	start := pageStart(location)
-	page_size := syscall.Getpagesize()
+	page := pageStart(location)
+	nextPage := uintptr(0)
 
-	page := memoryAccess(start, page_size)
-	err1 := syscall.Mprotect(page, attrib)
-	if err1 != nil {
-		panic(err1)
+	mProtect(page, attrib)
+	page2 := page + uintptr(syscall.Getpagesize())
+	if location+uintptr(len) >= page2 {
+		nextPage = page2
+		mProtect(page2, attrib)
 	}
 
-	if start+uintptr(len(data)) > start+uintptr(page_size) {
-		nextPage := memoryAccess(start+uintptr(page_size), page_size)
-		err2 := syscall.Mprotect(nextPage, attrib)
-		if err2 != nil {
-			panic(err2)
-		}
-	}
+	return &memProtectGuard{page, nextPage}
+}
 
-	f := memoryAccess(location, len(data))
-	copy(f, data[:])
-
-	attrib = syscall.PROT_READ | syscall.PROT_EXEC
-	err1 = syscall.Mprotect(page, attrib)
-	if err1 != nil {
-		panic(err1)
-	}
-
-	if start+uintptr(len(data)) > start+uintptr(page_size) {
-		nextPage := memoryAccess(start+uintptr(page_size), page_size)
-		err2 := syscall.Mprotect(nextPage, attrib)
-		if err2 != nil {
-			panic(err2)
-		}
+func (g *memProtectGuard) restore() {
+	attrib := syscall.PROT_READ | syscall.PROT_EXEC
+	mProtect(g.page, attrib)
+	if g.nextPage > 0 {
+		mProtect(g.nextPage, attrib)
 	}
 }
