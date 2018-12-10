@@ -2,7 +2,9 @@
 
 package carrot
 
-import "syscall"
+import (
+	"syscall"
+)
 
 // this function is super unsafe
 // aww yeah
@@ -36,7 +38,8 @@ func copyToLocation(location uintptr, data []byte) {
 	}
 
 	if start+uintptr(len(data)) > start+uintptr(page_size) {
-		err2 = syscall.Mprotect(nextPage, attrib)
+		nextPage := memoryAccess(start+uintptr(page_size), page_size)
+		err2 := syscall.Mprotect(nextPage, attrib)
 		if err2 != nil {
 			panic(err2)
 		}
