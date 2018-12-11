@@ -55,9 +55,6 @@ func patch(t, r, o reflect.Value) bool {
 	bridgePiece := allocBridgePiece()
 	bridgePiecePtr := uintptr(unsafe.Pointer(&bridgePiece[0]))
 	backup, moreStackJmp, reachFuncEnd := backupInstruction(t.Pointer(), len(jmp2r))
-	if len(bridgePiece) < len(backup) {
-		panic("bridge piece too small")
-	}
 
 	bridgeLen := 0
 	bridge := make([]byte, len(bridgePiece))
@@ -72,6 +69,9 @@ func patch(t, r, o reflect.Value) bool {
 		var uintptrLen = int(unsafe.Sizeof(offset))
 		copy(bridge[bridgeLen:], memoryAccess(uintptr(unsafe.Pointer(&offset)), uintptrLen))
 		bridgeLen += uintptrLen
+	}
+	if len(bridgePiece) < bridgeLen {
+		panic("bridge piece too small")
 	}
 	copyToLocation(bridgePiecePtr, bridge[0:bridgeLen])
 
