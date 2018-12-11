@@ -1,15 +1,18 @@
 package carrot
 
 import (
+	"fmt"
 	"reflect"
 	"unsafe"
 )
 
 type patchContext struct {
-	targetBytes   []byte
-	originalBytes []byte
-	bridgeBytes   *[]byte
+	targetBytes               []byte
+	originalBytes             []byte
+	targetAdjustStackRetBytes []byte
+	targetAdjustStackRet      uintptr
 
+	bridgeBytes *[]byte
 	replacement *reflect.Value
 	original    *reflect.Value
 }
@@ -41,15 +44,6 @@ func isPatched(t reflect.Value) bool {
 	return false
 }
 
-func unpatch(t reflect.Value) {
-	p, ok := patched[t.Pointer()]
-	if !ok {
-		return
-	}
-
-	doUnpatch(t.Pointer(), p)
-}
-
 func patch(t, r, o reflect.Value) bool {
 	jmp2r := jmpTo(locationFunc(r))
 	bridgePiece := allocBridgePiece()
@@ -67,7 +61,8 @@ func patch(t, r, o reflect.Value) bool {
 
 		var offset = *(*uintptr)(getPtr(t)) + uintptr(len(backup))
 		var uintptrLen = int(unsafe.Sizeof(offset))
-		copy(bridge[bridgeLen:], memoryAccess(uintptr(unsafe.Pointer(&offset)), uintptrLen))
+		copy(bridge[bridgeLen:],
+			memoryAccess(uintptr(unsafe.Pointer(&offset)), uintptrLen))
 		bridgeLen += uintptrLen
 	}
 	if len(bridgePiece) < bridgeLen {
@@ -77,17 +72,34 @@ func patch(t, r, o reflect.Value) bool {
 
 	jmp2b := jmpTo(uintptr(unsafe.Pointer(&bridgePiece)))
 	originalBytes := make([]byte, len(jmp2b))
-	copy(originalBytes, memoryAccess(locationFunc(o), len(jmp2b)))
+	copy(originalBytes, memoryAccess(o.Pointer(), len(jmp2b)))
+
+	targetBytes := make([]byte, len(jmp2r))
+	copy(targetBytes, memoryAccess(t.Pointer(), len(jmp2r)))
+	fmt.Println(targetBytes)
 
 	copyToLocation(t.Pointer(), jmp2r)
 	copyToLocation(o.Pointer(), jmp2b)
 
+	var targetAdjustBytes []byte
 	if moreStackJmp > 0 {
+		targetAdjustBytes = make([]byte, len(jmp2b))
+		copy(targetAdjustBytes, memoryAccess(moreStackJmp, len(jmp2b)))
 		copyToLocation(moreStackJmp, jmp2b)
 	}
 
-	patched[t.Pointer()] = patchContext{[]byte{}, []byte{}, &bridgePiece, &r, &o}
+	patched[t.Pointer()] = patchContext{targetBytes, originalBytes, targetAdjustBytes, moreStackJmp, &bridgePiece, &r, &o}
+	origins[o.Pointer()] = true
 	return true
+}
+
+func unpatch(t reflect.Value) {
+	p, ok := patched[t.Pointer()]
+	if !ok {
+		return
+	}
+
+	doUnpatch(t.Pointer(), p)
 }
 
 func unpatchAll() {
@@ -97,6 +109,13 @@ func unpatchAll() {
 }
 
 func doUnpatch(t uintptr, p patchContext) {
+	copyToLocation(t, p.targetBytes)
+	copyToLocation(p.original.Pointer(), p.originalBytes)
+	if p.targetAdjustStackRet > 0 {
+		copyToLocation(p.targetAdjustStackRet, p.targetAdjustStackRetBytes)
+	}
+	freeBridgePiece(*p.bridgeBytes)
+
 	delete(patched, t)
 	delete(origins, (*p.replacement).Pointer())
 }

@@ -32,36 +32,50 @@ var newF2 = func(p1, p2 [2000]byte) int {
 	return 2
 }
 
-var oldF2 = func(p1, p2 [2000]byte) int { return 3 }
+var oldF2 = func(p1, p2 [2000]byte) int { fmt.Println("old"); return 3 }
 
-func main() {
-	//	carrot.Patch(f1, newF1, ff)
-	//	fmt.Printf("f1=%d, newF1=%d, ff=%d\n", f1(), newF1(), ff())
+func testF1() {
+	fmt.Println("\nf1")
+	carrot.Disas(f1)
 
-	/*
-		fmt.Println("\nnewF2")
-		carrot.Disas(newF2)
+	carrot.Patch(f1, newF1, ff)
+	f1()
+	ff()
 
-		fmt.Println("\nf2")
-		carrot.Disas(f2)
-		fmt.Println("\noldF2")
-		carrot.Disas(oldF2)
-	*/
+	fmt.Println("\nf1")
+	carrot.Disas(f1)
+
+	carrot.UnpatchAll()
+
+	fmt.Println("\nf1")
+	carrot.Disas(f1)
+
+	f1()
+}
+
+func testF2() {
+	//	fmt.Println("\nf2")
+	//	carrot.Disas(f2)
+
 	var b = [2000]byte{0}
 	carrot.Patch(f2, newF2, oldF2)
-	//	carrot.Disas(f2)
-	//	carrot.Break()
 	f2(b, b)
 	oldF2(b, b)
-	/*
-		fmt.Println("\nf2")
-		carrot.Disas(f2)
-		fmt.Println("\noldF2")
-		carrot.Disas(oldF2)
+	newF2(b, b)
 
-		fmt.Printf("f2=%d\n", f2(b, b))
-		fmt.Printf("newF2=%d\n", newF2(b, b))
-		fmt.Printf("oldF2=%d\n", oldF2(b, b))
-	*/
-	return
+	//	fmt.Println("\nf2")
+	//	carrot.Disas(f2)
+
+	carrot.UnpatchAll()
+
+	//	fmt.Println("\nf2")
+	//	carrot.Disas(f2)
+
+	f2(b, b)
+	newF2(b, b)
+	oldF2(b, b)
+}
+
+func main() {
+	testF2()
 }
