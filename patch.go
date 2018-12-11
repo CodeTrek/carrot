@@ -64,9 +64,14 @@ func patch(t, r, o reflect.Value) bool {
 	copy(bridge[bridgeLen:], backup)
 	bridgeLen += len(backup)
 	if !reachFuncEnd {
-		jmp2t := jmpTo(locationFunc(t) + uintptr(len(backup)))
+		jmp2t := jmpTo(bridgePiecePtr + uintptr(bridgeLen+len(jmp2r)))
 		copy(bridge[bridgeLen:], jmp2t)
-		bridgeLen += len(backup)
+		bridgeLen += len(jmp2t)
+
+		var offset = *(*uintptr)(getPtr(t)) + uintptr(len(backup))
+		var uintptrLen = int(unsafe.Sizeof(offset))
+		copy(bridge[bridgeLen:], memoryAccess(uintptr(unsafe.Pointer(&offset)), uintptrLen))
+		bridgeLen += uintptrLen
 	}
 	copyToLocation(bridgePiecePtr, bridge[0:bridgeLen])
 

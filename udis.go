@@ -38,6 +38,7 @@ func backupInstruction(location uintptr, minLen int) (code []byte, moreStackPtr 
 	return
 }
 
+// Break int3
 func Break() {
 	C.int3()
 }

@@ -47,7 +47,11 @@ type value struct {
 }
 
 func locationFunc(v reflect.Value) uintptr {
-	return uintptr((*value)(unsafe.Pointer(&v)).ptr)
+	return uintptr(getPtr(v))
+}
+
+func getPtr(v reflect.Value) unsafe.Pointer {
+	return (*value)(unsafe.Pointer(&v)).ptr
 }
 
 type vs struct {
