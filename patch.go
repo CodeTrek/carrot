@@ -1,7 +1,6 @@
 package carrot
 
 import (
-	"fmt"
 	"reflect"
 	"unsafe"
 )
@@ -76,7 +75,6 @@ func patch(t, r, o reflect.Value) bool {
 
 	targetBytes := make([]byte, len(jmp2r))
 	copy(targetBytes, memoryAccess(t.Pointer(), len(jmp2r)))
-	fmt.Println(targetBytes)
 
 	copyToLocation(t.Pointer(), jmp2r)
 	copyToLocation(o.Pointer(), jmp2b)

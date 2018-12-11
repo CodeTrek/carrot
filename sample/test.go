@@ -77,5 +77,6 @@ func testF2() {
 }
 
 func main() {
+	testF1()
 	testF2()
 }
