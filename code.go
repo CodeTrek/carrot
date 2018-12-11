@@ -8,7 +8,7 @@ import (
 	"unsafe"
 )
 
-const bridgePiceSize = 32
+const bridgePiceSize = 64
 
 var (
 	freeBridgeList = bridge()

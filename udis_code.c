@@ -97,5 +97,20 @@ static udis_backup_instr_t udis_backup_instruction(const uint8_t* code, size_t l
 		}
 	}
 
+	if (result.adjust_stack_jmp > 0) {
+		udis_init(&u, (const uint8_t*)result.adjust_stack_jmp, 50);
+		ud_decode(&u);
+
+		if (ud_insn_mnemonic(&u) == UD_Icall) {
+			int len = ud_insn_len(&u);
+			ud_decode(&u);
+			if (ud_insn_mnemonic(&u) != UD_Ijmp) {
+				result.success = 0;
+			} else {
+				result.adjust_stack_jmp += len;
+			}
+		}
+	}
+
 	return result;
 }
