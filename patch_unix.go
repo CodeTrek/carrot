@@ -4,17 +4,31 @@ package carrot
 
 import (
 	"syscall"
+	"unsafe"
 )
 
-func mProtect(location uintptr, attrib int) {
-	err := syscall.Mprotect(memoryAccess(location, syscall.Getpagesize()), attrib)
+var pageSize = syscall.Getpagesize()
+
+func mProtect(b []byte, prot int) {
+	var _p0 = unsafe.Pointer(&b[0])
+	_, _, e1 := syscall.RawSyscall(syscall.SYS_MPROTECT, uintptr(_p0), uintptr(len(b)), uintptr(prot))
+	if e1 != 0 {
+		panic(e1)
+	}
+	return
+}
+
+func allocPage() []byte {
+	//f, err := os.OpenFile("/dev/zero", os.O_RDWR|os.O_CREATE, 0777)
+	//	defer f.Close()
+
+	data, err := syscall.Mmap(-1, 0, syscall.Getpagesize(),
+		syscall.PROT_READ|syscall.PROT_EXEC, syscall.MAP_PRIVATE|syscall.MAP_ANONYMOUS)
 	if err != nil {
 		panic(err)
 	}
-}
 
-func makePageExecutable(location uintptr) {
-	mProtect(location, syscall.PROT_READ|syscall.PROT_EXEC)
+	return data
 }
 
 type memProtectGuard struct {
@@ -27,11 +41,11 @@ func makeWritable(location uintptr, len int) *memProtectGuard {
 	page := pageStart(location)
 	nextPage := uintptr(0)
 
-	mProtect(page, attrib)
-	page2 := page + uintptr(syscall.Getpagesize())
+	mProtect(memoryAccess(page, pageSize), attrib)
+	page2 := page + uintptr(pageSize)
 	if location+uintptr(len) >= page2 {
 		nextPage = page2
-		mProtect(page2, attrib)
+		mProtect(memoryAccess(page2, pageSize), attrib)
 	}
 
 	return &memProtectGuard{page, nextPage}
@@ -39,8 +53,8 @@ func makeWritable(location uintptr, len int) *memProtectGuard {
 
 func (g *memProtectGuard) restore() {
 	attrib := syscall.PROT_READ | syscall.PROT_EXEC
-	mProtect(g.page, attrib)
+	mProtect(memoryAccess(g.page, pageSize), attrib)
 	if g.nextPage > 0 {
-		mProtect(g.nextPage, attrib)
+		mProtect(memoryAccess(g.nextPage, pageSize), attrib)
 	}
 }

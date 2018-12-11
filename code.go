@@ -1,14 +1,17 @@
 package carrot
 
 import (
+	"bytes"
 	"container/list"
 	"reflect"
 	"syscall"
 	"unsafe"
 )
 
+const bridgePiceSize = 32
+
 var (
-	freeBridgeList = initBridge()
+	freeBridgeList = bridge()
 	usedBridgeMap  = make(map[uintptr][]byte)
 )
 
@@ -16,35 +19,26 @@ func pageStart(ptr uintptr) uintptr {
 	return ptr & ^(uintptr(syscall.Getpagesize() - 1))
 }
 
-func initBridge() *list.List {
-	bridgePtr, bridgeLen := udisInitBridge()
-	pageSize := uintptr(syscall.Getpagesize())
-	if bridgePtr == 0 {
-		panic("init failed\n")
-	}
+func bridge() *list.List {
+	ls := list.New()
+	allocBridge(ls)
+	return ls
+}
 
-	// align to pagesize
-	bridgeStart := pageStart(bridgePtr)
-	if bridgeStart < bridgePtr {
-		bridgeStart += pageSize
-	}
+func allocBridge(ls *list.List) {
+	data := allocPage()
 
-	// change page protection to executable
-	pageCount := uintptr((bridgePtr + bridgeLen - bridgeStart) / pageSize)
-	for i := uintptr(0); i < pageCount; i++ {
-		makePageExecutable(bridgeStart + i*pageSize)
-	}
+	g := makeWritable(uintptr(unsafe.Pointer(&data[0])), len(data))
+	defer g.restore()
 
 	// split whole bridge buffer to pieces
-	ls := list.New()
-	size := pageCount * pageSize
-	pieceSize := uintptr(udisBridgePieceSize())
-	for offset := uintptr(0); offset < size; offset += pieceSize {
-		var ptr = bridgeStart + offset
-		ls.PushBack(memoryAccess(ptr, int(pieceSize)))
+	size := len(data)
+	p := bytes.Repeat([]byte{0xcc}, bridgePiceSize)
+	for i := 0; i < size; i += bridgePiceSize {
+		var b = data[i : i+bridgePiceSize]
+		copy(b, p)
+		ls.PushBack(b)
 	}
-
-	return ls
 }
 
 type value struct {
@@ -52,8 +46,16 @@ type value struct {
 	ptr unsafe.Pointer
 }
 
-func location(v reflect.Value) uintptr {
+func locationFunc(v reflect.Value) uintptr {
 	return uintptr((*value)(unsafe.Pointer(&v)).ptr)
+}
+
+type vs struct {
+	ptr unsafe.Pointer
+}
+
+func locationSlice(s *[]byte) uintptr {
+	return uintptr((*vs)(unsafe.Pointer(s)).ptr)
 }
 
 func memoryAccess(p uintptr, len int) []byte {
@@ -66,7 +68,7 @@ func memoryAccess(p uintptr, len int) []byte {
 
 func allocBridgePiece() []byte {
 	if freeBridgeList.Len() <= 0 {
-		panic("no more pieces!")
+		allocBridge(freeBridgeList)
 	}
 
 	node := freeBridgeList.Front()
@@ -93,70 +95,4 @@ func freeBridgePiece(piece []byte) {
 
 	delete(usedBridgeMap, ptr)
 	freeBridgeList.PushBack(vv)
-}
-
-func backupInstruction(location uintptr, minLen int) (code []byte, moreStackPtr uintptr) {
-	moreStackPtr = uintptr(0)
-	src := memoryAccess(location, 300)
-	len := 0
-
-	u := udisCodecInit(src)
-	defer udisCodecFinal(u)
-
-	var offset = 0
-	var op *udisOP
-	var adjustStack = uintptr(0)
-	for offset < 200 {
-		op = udisDecode(u)
-		if op == nil {
-			udisDisas(memoryAccess(location, 300))
-			panic("backup instruction failed!")
-		}
-		if len < minLen {
-			len += op.len
-		}
-
-		offset += op.len
-		if op.ins == "jbe" {
-			if op.jmpTo <= 0 {
-				udisDisas(memoryAccess(location, 300))
-				panic("jbe target not decoded!")
-			}
-
-			adjustStack = op.jmpTo
-			break
-		}
-
-		if op.ins == "ret" || op.ins == "jmp" {
-			break
-		}
-	}
-
-	if adjustStack > 0 {
-		udisCodecReset(u, memoryAccess(adjustStack, 50))
-		op1 := udisDecode(u)
-		if op1.ins != "call" {
-			udisDisas(memoryAccess(location, 300))
-			panic("wrong adjustStack addr!")
-		}
-
-		op2 := udisDecode(u)
-		if op2.ins != "jmp" {
-			udisDisas(memoryAccess(location, 300))
-			panic("wrong adjustStack addr!")
-		}
-
-		if op2.jmpTo != location {
-			udisDisas(memoryAccess(location, 300))
-			panic("wrong adjustStack addr!")
-		}
-
-		moreStackPtr = adjustStack + uintptr(op1.len)
-	}
-
-	return src[0:len], moreStackPtr
-}
-
-func disasCode(bytes []byte) {
-	udisDisas(bytes)
 }

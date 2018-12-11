@@ -8,7 +8,7 @@ import (
 type patchContext struct {
 	targetBytes   []byte
 	originalBytes []byte
-	bridge        []byte
+	bridgeBytes   *[]byte
 
 	replacement *reflect.Value
 	original    *reflect.Value
@@ -51,25 +51,37 @@ func unpatch(t reflect.Value) {
 }
 
 func patch(t, r, o reflect.Value) bool {
-	jmp2r := jmpTo(location(r))
-	bridge := allocBridgePiece()
-	bridgePtr := uintptr(unsafe.Pointer(&bridge[0]))
-	backup, _ := backupInstruction(t.Pointer(), len(jmp2r))
-	if len(bridge) < len(backup) {
+	jmp2r := jmpTo(locationFunc(r))
+	bridgePiece := allocBridgePiece()
+	bridgePiecePtr := uintptr(unsafe.Pointer(&bridgePiece[0]))
+	backup, moreStackJmp, reachFuncEnd := backupInstruction(t.Pointer(), len(jmp2r))
+	if len(bridgePiece) < len(backup) {
 		panic("bridge piece too small")
 	}
-	jmp2t := jmpTo(location(t) + uintptr(len(backup)))
 
-	copyToLocation(bridgePtr, backup)
-	copyToLocation(bridgePtr+uintptr(len(backup)), jmp2t)
+	bridgeLen := 0
+	bridge := make([]byte, len(bridgePiece))
+	copy(bridge[bridgeLen:], backup)
+	bridgeLen += len(backup)
+	if !reachFuncEnd {
+		jmp2t := jmpTo(locationFunc(t) + uintptr(len(backup)))
+		copy(bridge[bridgeLen:], jmp2t)
+		bridgeLen += len(backup)
+	}
+	copyToLocation(bridgePiecePtr, bridge[0:bridgeLen])
 
-	jmp2b := jmpTo(bridgePtr)
+	jmp2b := jmpTo(uintptr(unsafe.Pointer(&bridgePiece)))
 	originalBytes := make([]byte, len(jmp2b))
-	copy(originalBytes, memoryAccess(location(o), len(jmp2b)))
+	copy(originalBytes, memoryAccess(locationFunc(o), len(jmp2b)))
 
 	copyToLocation(t.Pointer(), jmp2r)
 	copyToLocation(o.Pointer(), jmp2b)
 
+	if moreStackJmp > 0 {
+		copyToLocation(moreStackJmp, jmp2b)
+	}
+
+	patched[t.Pointer()] = patchContext{[]byte{}, []byte{}, &bridgePiece, &r, &o}
 	return true
 }
 

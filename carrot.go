@@ -57,12 +57,12 @@ func UnpatchAll() {
 	unpatchAll()
 }
 
-// Disassemble function
+// Disas function
 func Disas(target interface{}) {
 	t := reflect.ValueOf(target)
 	if t.Kind() != reflect.Func {
 		panic("f MUST BE func")
 	}
 
-	disasCode(memoryAccess(t.Pointer(), 6000))
+	udisDisas(memoryAccess(t.Pointer(), 6000))
 }
