@@ -104,16 +104,23 @@ var r4 = func(p1 [2000]byte) int {
 var o4 = func(p1 [2000]byte) int { return 3 }
 
 func test4() {
-	//var b = [2000]byte{0}
-	carrot.Patch(t4, r4, o4)
+	var b = [2000]byte{0}
+	fmt.Println("t4")
 	carrot.Disas(t4)
-	carrot.Disas(o4)
-	//	t4(b)
+	carrot.Patch(t4, r4, o4)
+	fmt.Println("t4")
+	carrot.Disas(t4)
+	fmt.Println("r4")
+	carrot.Disas(r4)
+	//	fmt.Println("bridge")
+	//	carrot.Disas(carrot.GetBridge(t4))
+	carrot.Break()
+	t4(b)
 }
 
 func main() {
-	test1()
-	test2()
-	test3()
-	//test4()
+	//	test1()
+	//	test2()
+	//	test3()
+	test4()
 }

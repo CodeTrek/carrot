@@ -70,12 +70,23 @@ func UnpatchAll() {
 	unpatchAll()
 }
 
+// GetBridge of target
+func GetBridge(target interface{}) []byte {
+	return getBridge(reflect.ValueOf(target))
+}
+
 // Disas function
 func Disas(target interface{}) {
-	t := reflect.ValueOf(target)
-	if t.Kind() != reflect.Func {
-		panic("f MUST BE func")
+	if code, ok := target.([]byte); ok {
+		udisDisas(code)
+		return
 	}
 
-	udisDisas(memoryAccess(t.Pointer(), 6000))
+	t := reflect.ValueOf(target)
+	if t.Kind() == reflect.Func {
+		udisDisas(memoryAccess(t.Pointer(), 6000))
+		return
+	}
+
+	panic("must be []byte or func")
 }

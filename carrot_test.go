@@ -42,7 +42,7 @@ func TestComplex(t *testing.T) {
 
 	var b = [2000]byte{0}
 	assert.True(t, carrot.Patch(f2, newF2, oldF2))
-	//	assert.Equal(t, 2, f2(b))
+	assert.Equal(t, 2, f2(b))
 	carrot.UnpatchAll()
 	assert.Equal(t, 1, f2(b))
 }

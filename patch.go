@@ -127,3 +127,11 @@ func copyToLocation(location uintptr, data []byte) {
 	f := memoryAccess(location, len(data))
 	copy(f, data[:])
 }
+
+func getBridge(t reflect.Value) []byte {
+	if p, ok := patched[t.Pointer()]; ok {
+		return *(p.bridgeBytes)
+	}
+
+	return nil
+}
