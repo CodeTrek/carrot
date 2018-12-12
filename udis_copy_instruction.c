@@ -50,12 +50,7 @@ static int copy_lea(ud_t* u, udis_copy_instruction_t* p)
         case 0x15: d = 0xba; break;
         }
         if (d > 0) {
-            printf("0x%x\n", p->raw_data_ptr);
-            uintptr_t real_addr = (uintptr_t)p->pc + ud_insn_len(u) + *(uint32_t*)(p->pc + offset);
-            uint64_t addr = p->raw_data_ptr + *p->data_used;
-            memcpy(p->data + *p->data_used, &real_addr, sizeof(real_addr));
-            *p->data_used += sizeof(real_addr);
-
+            uintptr_t addr = (uintptr_t)p->pc + ud_insn_len(u) + *(uint32_t*)(p->pc + offset);
             uint8_t ins[] = {
 #ifndef _M_IX86
                 0x48,

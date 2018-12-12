@@ -56,7 +56,6 @@ static udis_backup_instr_t udis_backup_instruction(const uint8_t* code, size_t l
 	ud_t u;
 	udis_init(&u, code, len);
 
-	int copied_src_len = 0;
 	int offset = 0;
 	while (offset < 200 && offset < len - 20) {
 		int current_len = ud_decode(&u);
@@ -66,17 +65,16 @@ static udis_backup_instr_t udis_backup_instruction(const uint8_t* code, size_t l
 			break;
 		}
 
-		if (copied_src_len < jmp_len) {
+		if (result.copied_src_len < jmp_len) {
 			udis_copy_instruction_t cp_ins = {
 				data_ptr,
-				code + copied_src_len,
+				code + result.copied_src_len,
 				&result.copied[result.copied_len],
 				result.data,
 				&result.data_len
 			};
 			result.copied_len += copy_instruction(&u, &cp_ins);
-
-			copied_src_len += current_len;
+			result.copied_src_len += current_len;
 
 			if (current_ins == UD_Iret || current_ins == UD_Ijmp) {
 				result.reach_end = 1;

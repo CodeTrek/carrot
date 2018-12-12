@@ -20,7 +20,7 @@ func udisDisas(data []byte) {
 	C.udis_disas(code, length)
 }
 
-func backupInstruction(location uintptr, minLen int, dataPtr uintptr) (code []byte, dataUsed []byte, moreStackPtr uintptr, funcEnded bool) {
+func backupInstruction(location uintptr, minLen int, dataPtr uintptr) (code []byte, dataUsed []byte, srcCopiedLen int, moreStackPtr uintptr, funcEnded bool) {
 	v := C.udis_backup_instruction(*(**C.uint8_t)(unsafe.Pointer(&location)), 300, C.size_t(minLen), C.uintptr_t(dataPtr))
 	if v.success == 0 {
 		udisDisas(memoryAccess(location, 300))
@@ -31,6 +31,7 @@ func backupInstruction(location uintptr, minLen int, dataPtr uintptr) (code []by
 	copy(code, memoryAccess(uintptr(unsafe.Pointer(&v.copied[0])), int(v.copied_len)))
 	copy(dataUsed, memoryAccess(uintptr(unsafe.Pointer(&v.data[0])), int(v.data_len)))
 	moreStackPtr = uintptr(v.adjust_stack_jmp)
+	srcCopiedLen = int(v.copied_src_len)
 	funcEnded = v.reach_end == 1
 	return
 }

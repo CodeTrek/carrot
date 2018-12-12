@@ -14,6 +14,7 @@ struct udis_backup_instr {
 	int reach_end;
 	uintptr_t adjust_stack_jmp;
 
+	int copied_src_len;
 	int data_len;
 	int copied_len;
 	uint8_t copied[128];

@@ -1,7 +1,6 @@
 package carrot
 
 import (
-	"fmt"
 	"reflect"
 	"unsafe"
 )
@@ -48,7 +47,7 @@ func patch(t, r, o reflect.Value) bool {
 	jmp2r := jmpTo(locationFunc(r))
 	bridgePiece := allocBridgePiece()
 	bridgePiecePtr := uintptr(unsafe.Pointer(&bridgePiece[0]))
-	backup, dataUsed, moreStackJmp, reachFuncEnd :=
+	backup, dataUsed, targetCopiedLen, moreStackJmp, reachFuncEnd :=
 		backupInstruction(t.Pointer(), len(jmp2r), bridgePiecePtr+uintptr(bridgePieceDataOffset()))
 	if len(dataUsed) > len(bridgePiece)-bridgePieceDataOffset() {
 		panic("bridge piece data section too small")
@@ -66,7 +65,7 @@ func patch(t, r, o reflect.Value) bool {
 		jmp2t := jmpTo(bridgePiecePtr + uintptr(dataOffset+len(dataUsed)))
 		copy(bridge[len(backup):dataOffset], jmp2t)
 
-		var offset = *(*uintptr)(getPtr(t)) + uintptr(len(backup))
+		var offset = *(*uintptr)(getPtr(t)) + uintptr(targetCopiedLen)
 		var uintptrLen = int(unsafe.Sizeof(offset))
 		copy(bridge[dataOffset+len(dataUsed):],
 			memoryAccess(uintptr(unsafe.Pointer(&offset)), uintptrLen))
@@ -91,8 +90,8 @@ func patch(t, r, o reflect.Value) bool {
 		copyToLocation(moreStackJmp, jmp2b)
 	}
 
-	fmt.Println("bridge")
-	udisDisas(bridgePiece)
+	//	fmt.Println("bridge")
+	//	udisDisas(bridgePiece)
 
 	patched[t.Pointer()] = patchContext{targetBytes, originalBytes, targetAdjustBytes, moreStackJmp, &bridgePiece, &r, &o}
 	origins[o.Pointer()] = true

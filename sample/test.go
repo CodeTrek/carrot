@@ -68,11 +68,20 @@ var original3 = func() string {
 func test3() {
 	fmt.Println("\n[test3]")
 
-	fmt.Println("target3")
-	carrot.Disas(target3)
+	//	fmt.Println("target3")
+	//	carrot.Disas(target3)
+
+	//	carrot.Break()
+	//	target3()
 	carrot.Patch(target3, replacement3, original3)
-	fmt.Println("original")
-	carrot.Disas(original3)
+	//	fmt.Println("target3")
+	//	carrot.Disas(target3)
+	//	carrot.Break()
+	//	original3()
+
+	//	fmt.Println("original")
+	//	carrot.Disas(original3)
+
 	//	return
 	//	fmt.Println("1")
 
@@ -84,7 +93,7 @@ func test3() {
 }
 
 func main() {
-	//	test1()
-	// test2()
+	test1()
+	test2()
 	test3()
 }
