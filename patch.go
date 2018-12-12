@@ -1,6 +1,7 @@
 package carrot
 
 import (
+	"fmt"
 	"reflect"
 	"unsafe"
 )
@@ -47,27 +48,31 @@ func patch(t, r, o reflect.Value) bool {
 	jmp2r := jmpTo(locationFunc(r))
 	bridgePiece := allocBridgePiece()
 	bridgePiecePtr := uintptr(unsafe.Pointer(&bridgePiece[0]))
-	backup, moreStackJmp, reachFuncEnd := backupInstruction(t.Pointer(), len(jmp2r))
+	backup, dataUsed, moreStackJmp, reachFuncEnd :=
+		backupInstruction(t.Pointer(), len(jmp2r), bridgePiecePtr+uintptr(bridgePieceDataOffset()))
+	if len(dataUsed) > len(bridgePiece)-bridgePieceDataOffset() {
+		panic("bridge piece data section too small")
+	}
+	dataOffset := bridgePieceDataOffset()
+	if len(backup)+len(jmp2r) >= len(bridgePiece)-dataOffset {
+		panic("bridge piece code section too small")
+	}
 
-	bridgeLen := 0
 	bridge := make([]byte, len(bridgePiece))
-	copy(bridge[bridgeLen:], backup)
-	bridgeLen += len(backup)
+	copy(bridge[:dataOffset], backup)
+	copy(bridge[dataOffset:], dataUsed)
+
 	if !reachFuncEnd {
-		jmp2t := jmpTo(bridgePiecePtr + uintptr(bridgeLen+len(jmp2r)))
-		copy(bridge[bridgeLen:], jmp2t)
-		bridgeLen += len(jmp2t)
+		jmp2t := jmpTo(bridgePiecePtr + uintptr(dataOffset+len(dataUsed)))
+		copy(bridge[len(backup):dataOffset], jmp2t)
 
 		var offset = *(*uintptr)(getPtr(t)) + uintptr(len(backup))
 		var uintptrLen = int(unsafe.Sizeof(offset))
-		copy(bridge[bridgeLen:],
+		copy(bridge[dataOffset+len(dataUsed):],
 			memoryAccess(uintptr(unsafe.Pointer(&offset)), uintptrLen))
-		bridgeLen += uintptrLen
 	}
-	if len(bridgePiece) < bridgeLen {
-		panic("bridge piece too small")
-	}
-	copyToLocation(bridgePiecePtr, bridge[0:bridgeLen])
+
+	copyToLocation(bridgePiecePtr, bridge)
 
 	jmp2b := jmpTo(uintptr(unsafe.Pointer(&bridgePiece)))
 	originalBytes := make([]byte, len(jmp2b))
@@ -85,6 +90,9 @@ func patch(t, r, o reflect.Value) bool {
 		copy(targetAdjustBytes, memoryAccess(moreStackJmp, len(jmp2b)))
 		copyToLocation(moreStackJmp, jmp2b)
 	}
+
+	fmt.Println("bridge")
+	udisDisas(bridgePiece)
 
 	patched[t.Pointer()] = patchContext{targetBytes, originalBytes, targetAdjustBytes, moreStackJmp, &bridgePiece, &r, &o}
 	origins[o.Pointer()] = true

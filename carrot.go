@@ -5,6 +5,19 @@ import (
 	"sync"
 )
 
+/*
+void int3()
+{
+	__asm__("int $0x03");
+}
+*/
+import "C"
+
+// Break int3
+func Break() {
+	C.int3()
+}
+
 var lock = sync.Mutex{}
 
 // Patch is to patch function

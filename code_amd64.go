@@ -15,3 +15,17 @@ func jmpTo(to uintptr) []byte {
 		0xFF, 0x22,     // jmp QWORD PTR [rdx]
 	}
 }
+
+func movRAX(v uintptr) []byte {
+	return []byte{
+		0x48, 0xB8,
+		byte(v),
+		byte(v >> 8),
+		byte(v >> 16),
+		byte(v >> 24),
+		byte(v >> 32),
+		byte(v >> 40),
+		byte(v >> 48),
+		byte(v >> 56), // movabs rax,v
+	}
+}

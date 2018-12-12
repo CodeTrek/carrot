@@ -1,25 +1,12 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include "thirdparty/udis86/libudis86/types.h"
-#include "thirdparty/udis86/libudis86/extern.h"
-#include "thirdparty/udis86/libudis86/syn.h"
-#include "thirdparty/udis86/libudis86/udint.h"
+#include "udis_code.h"
 
-struct udis_backup_instr {
-	int success;
-	int reach_end;
-	int code_len;
-	uintptr_t adjust_stack_jmp;
-};
-
-typedef struct udis_backup_instr udis_backup_instr_t;
+extern int copy_instruction(ud_t* u, udis_copy_instruction_t* p);
 
 static void udis_init(ud_t* u, const uint8_t* code, size_t len)
 {
 	ud_init(u);
 	ud_set_mode(u, sizeof(char*) * 8);
-	ud_set_syntax(u, UD_SYN_INTEL);
+	ud_set_syntax(u, UD_SYN_ATT);
 	ud_set_input_buffer(u, code, len);
 	ud_set_pc(u, (uint64_t)code);
 }
@@ -60,13 +47,16 @@ static int64_t udis_real_target(ud_t* u, int n)
 	}
 }
 
-static udis_backup_instr_t udis_backup_instruction(const uint8_t* code, size_t len, size_t jmp_len)
+static udis_backup_instr_t udis_backup_instruction(const uint8_t* code, size_t len, size_t jmp_len, uintptr_t data_ptr)
 {
+	udis_backup_instr_t result;
+	memset(&result, 0, sizeof(result));
+	result.success = 1;
+
 	ud_t u;
 	udis_init(&u, code, len);
 
-	udis_backup_instr_t result = { 1 };
-
+	int copied_src_len = 0;
 	int offset = 0;
 	while (offset < 200 && offset < len - 20) {
 		int current_len = ud_decode(&u);
@@ -76,8 +66,22 @@ static udis_backup_instr_t udis_backup_instruction(const uint8_t* code, size_t l
 			break;
 		}
 
-		if (result.code_len < jmp_len) {
-			result.code_len += current_len;
+		if (copied_src_len < jmp_len) {
+			udis_copy_instruction_t cp_ins = {
+				data_ptr,
+				code + copied_src_len,
+				&result.copied[result.copied_len],
+				result.data,
+				&result.data_len
+			};
+			result.copied_len += copy_instruction(&u, &cp_ins);
+
+			copied_src_len += current_len;
+
+			if (current_ins == UD_Iret || current_ins == UD_Ijmp) {
+				result.reach_end = 1;
+				break;
+			}
 		}
 
 		offset += current_len;
@@ -92,7 +96,6 @@ static udis_backup_instr_t udis_backup_instruction(const uint8_t* code, size_t l
 		}
 
 		if (current_ins == UD_Iret || current_ins == UD_Ijmp) {
-			result.reach_end = 1;
 			break;
 		}
 	}

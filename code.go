@@ -90,6 +90,10 @@ func allocBridgePiece() []byte {
 	return vv
 }
 
+func bridgePieceDataOffset() int {
+	return bridgePiceSize - 32
+}
+
 func freeBridgePiece(piece []byte) {
 	ptr := uintptr(unsafe.Pointer(&piece[0]))
 	vv, ok := usedBridgeMap[ptr]
