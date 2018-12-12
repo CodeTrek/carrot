@@ -27,18 +27,19 @@ func TestSample(t *testing.T) {
 	assert.Equal(t, 3, oldF1())
 }
 
-var f2 = func(p1 [2000]byte) int {
-	fmt.Printf("%s%s%s%s", p1[0:1], p1[0:1], p1[0:1], p1[0:1])
-	return 1
-}
-
-var newF2 = func(p1 [2000]byte) int {
-	return 2
-}
-
-var oldF2 = func(p1 [2000]byte) int { return 3 }
-
 func TestComplex(t *testing.T) {
+
+	var f2 = func(p1 [2000]byte) int {
+		fmt.Printf("%s%s%s%s", p1[0:1], p1[0:1], p1[0:1], p1[0:1])
+		return 1
+	}
+
+	var newF2 = func(p1 [2000]byte) int {
+		return 2
+	}
+
+	var oldF2 = func(p1 [2000]byte) int { return 3 }
+
 	var b = [2000]byte{0}
 	assert.True(t, carrot.Patch(f2, newF2, oldF2))
 	assert.Equal(t, 2, f2(b))
