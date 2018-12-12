@@ -92,8 +92,28 @@ func test3() {
 
 }
 
+var t4 = func(p1 [2000]byte) int {
+	fmt.Printf("%s%s%s%s", p1[0:1], p1[0:1], p1[0:1], p1[0:1])
+	return 1
+}
+
+var r4 = func(p1 [2000]byte) int {
+	return 2
+}
+
+var o4 = func(p1 [2000]byte) int { return 3 }
+
+func test4() {
+	//var b = [2000]byte{0}
+	carrot.Patch(t4, r4, o4)
+	carrot.Disas(t4)
+	carrot.Disas(o4)
+	//	t4(b)
+}
+
 func main() {
 	test1()
 	test2()
 	test3()
+	//test4()
 }

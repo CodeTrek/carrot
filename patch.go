@@ -44,7 +44,7 @@ func isPatched(t reflect.Value) bool {
 }
 
 func patch(t, r, o reflect.Value) bool {
-	jmp2r := jmpTo(locationFunc(r))
+	jmp2r := jmpTo(getPtr(r))
 	bridgePiece := allocBridgePiece()
 	bridgePiecePtr := uintptr(unsafe.Pointer(&bridgePiece[0]))
 	backup, dataUsed, targetCopiedLen, moreStackJmp, reachFuncEnd :=
@@ -62,18 +62,13 @@ func patch(t, r, o reflect.Value) bool {
 	copy(bridge[dataOffset:], dataUsed)
 
 	if !reachFuncEnd {
-		jmp2t := jmpTo(bridgePiecePtr + uintptr(dataOffset+len(dataUsed)))
+		jmp2t := jmpTo(getPtr(t) + uintptr(targetCopiedLen))
 		copy(bridge[len(backup):dataOffset], jmp2t)
-
-		var offset = *(*uintptr)(getPtr(t)) + uintptr(targetCopiedLen)
-		var uintptrLen = int(unsafe.Sizeof(offset))
-		copy(bridge[dataOffset+len(dataUsed):],
-			memoryAccess(uintptr(unsafe.Pointer(&offset)), uintptrLen))
 	}
 
 	copyToLocation(bridgePiecePtr, bridge)
 
-	jmp2b := jmpTo(uintptr(unsafe.Pointer(&bridgePiece)))
+	jmp2b := jmpTo(uintptr(unsafe.Pointer(&bridgePiece[0])))
 	originalBytes := make([]byte, len(jmp2b))
 	copy(originalBytes, memoryAccess(o.Pointer(), len(jmp2b)))
 

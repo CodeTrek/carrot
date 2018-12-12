@@ -8,7 +8,7 @@ func jmpTo(to uintptr) []byte {
 		byte(to >> 8),
 		byte(to >> 16),
 		byte(to >> 24), // mov edx,to
-		0xFF, 0x22,     // jmp DWORD PTR [edx]
+		0xFF, 0xe2,     // jmp DWORD PTR [edx]
 	}
 }
 

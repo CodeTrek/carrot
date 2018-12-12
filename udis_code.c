@@ -13,6 +13,8 @@ static void udis_init(ud_t* u, const uint8_t* code, size_t len)
 
 static void udis_disas(const uint8_t* code, size_t code_len)
 {
+	printf("\n[DISASSEMBLED@0x%" FMT64 "x]\n", code);
+
 	ud_t u;
 	udis_init(&u, code, code_len);
 

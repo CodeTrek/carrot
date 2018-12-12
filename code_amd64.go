@@ -12,7 +12,7 @@ func jmpTo(to uintptr) []byte {
 		byte(to >> 40),
 		byte(to >> 48),
 		byte(to >> 56), // movabs rdx,to
-		0xFF, 0x22,     // jmp QWORD PTR [rdx]
+		0xFF, 0xe2,     // jmp QWORD PTR [rdx]
 	}
 }
 
