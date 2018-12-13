@@ -7,24 +7,22 @@ import (
 )
 
 var t1 = func() int { return 1 }
+var r1 = func() int { return 2 }
+var o1 = func() (a int) { return }
+
 var t2 = func(p1, p2 [2000]byte) int {
 	fmt.Printf("target%s%s%s%s\n", p1[0:1], p2[0:1], p1[0:1], p2[0:1])
 	return 1
 }
-var t3 = func() string { return "target" }
-var t4 = func(p1 [2000]byte) int {
-	fmt.Printf("%s%s%s%s", p1[0:1], p1[0:1], p1[0:1], p1[0:1])
-	return 1
-}
-
-var r1 = func() int { return 2 }
 var r2 = func(p1, p2 [2000]byte) int { fmt.Println("replacement"); return 2 }
-var r3 = func() string { return "replacement" }
-var r4 = func(p1 [2000]byte) int { return 2 }
-
-var o1 = func() (a int) { return }
 var o2 = func(p1, p2 [2000]byte) int { fmt.Println("original"); return 3 }
+
+var t3 = func() string { return "target" }
+var r3 = func() string { return "replacement" }
 var o3 = func() string { return "original" }
+
+var t4 = func(p1 [2000]byte) int { fmt.Printf("%s%s%s%s", p1[0:1], p1[0:1], p1[0:1], p1[0:1]); return 1 }
+var r4 = func(p1 [2000]byte) int { return 2 }
 var o4 = func(p1 [2000]byte) int { return 3 }
 
 func test1() {
