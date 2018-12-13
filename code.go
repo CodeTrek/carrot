@@ -8,12 +8,16 @@ import (
 	"unsafe"
 )
 
-const bridgePiceSize = 64
-
 var (
 	freeBridgeList = bridge()
 	usedBridgeMap  = make(map[uintptr][]byte)
 )
+
+const bridgePiceSize = 64
+
+func bridgeIncrStackOffset() int {
+	return bridgePiceSize / 2
+}
 
 func pageStart(ptr uintptr) uintptr {
 	return ptr & ^(uintptr(syscall.Getpagesize() - 1))
@@ -84,10 +88,6 @@ func allocBridgePiece() []byte {
 	usedBridgeMap[ptr] = vv
 
 	return vv
-}
-
-func bridgePieceDataOffset() int {
-	return bridgePiceSize - 32
 }
 
 func freeBridgePiece(piece []byte) {

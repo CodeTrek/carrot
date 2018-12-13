@@ -47,26 +47,20 @@ func patch(t, r, o reflect.Value) bool {
 	jmp2r := jmpTo(getPtr(r))
 	bridgePiece := allocBridgePiece()
 	bridgePiecePtr := uintptr(unsafe.Pointer(&bridgePiece[0]))
-	backup, dataUsed, targetCopiedLen, moreStackJmp, reachFuncEnd :=
-		backupInstruction(t.Pointer(), len(jmp2r), bridgePiecePtr+uintptr(bridgePieceDataOffset()))
-	if len(dataUsed) > len(bridgePiece)-bridgePieceDataOffset() {
-		panic("bridge piece data section too small")
-	}
-	dataOffset := bridgePieceDataOffset()
-	if len(backup)+len(jmp2r) >= len(bridgePiece)-dataOffset {
+	backup, incrStack, targetCopiedLen, incrStkPtr, reachFuncEnd := backupInstruction(t.Pointer(), len(jmp2r))
+
+	incrStkOffset := bridgeIncrStackOffset()
+	if len(backup)+len(jmp2r) >= len(bridgePiece)-incrStkOffset {
 		panic("bridge piece code section too small")
 	}
 
 	bridge := make([]byte, len(bridgePiece))
-	copy(bridge[:dataOffset], backup)
-	copy(bridge[dataOffset:], dataUsed)
+	copy(bridge[:incrStkOffset], backup)
 
 	if !reachFuncEnd {
 		jmp2t := jmpTo(getPtr(t) + uintptr(targetCopiedLen))
-		copy(bridge[len(backup):dataOffset], jmp2t)
+		copy(bridge[len(backup):incrStkOffset], jmp2t)
 	}
-
-	copyToLocation(bridgePiecePtr, bridge)
 
 	jmp2b := jmpTo(uintptr(unsafe.Pointer(&bridgePiece[0])))
 	originalBytes := make([]byte, len(jmp2b))
@@ -79,16 +73,22 @@ func patch(t, r, o reflect.Value) bool {
 	copyToLocation(o.Pointer(), jmp2b)
 
 	var targetAdjustBytes []byte
-	if moreStackJmp > 0 {
-		targetAdjustBytes = make([]byte, len(jmp2b))
-		copy(targetAdjustBytes, memoryAccess(moreStackJmp, len(jmp2b)))
-		copyToLocation(moreStackJmp, jmp2b)
+	if incrStkPtr > 0 {
+		jmp2i := jmpTo(bridgePiecePtr + uintptr(incrStkOffset))
+		targetAdjustBytes = make([]byte, len(incrStack)+len(jmp2i))
+		copy(targetAdjustBytes, memoryAccess(incrStkPtr, len(targetAdjustBytes)))
+
+		copy(bridge[incrStkOffset:], incrStack)
+		copy(bridge[incrStkOffset+len(incrStack):], jmp2b)
+		copyToLocation(incrStkPtr, jmp2i)
 	}
+
+	copyToLocation(bridgePiecePtr, bridge)
 
 	//	fmt.Println("bridge")
 	//	udisDisas(bridgePiece)
 
-	patched[t.Pointer()] = patchContext{targetBytes, originalBytes, targetAdjustBytes, moreStackJmp, &bridgePiece, &r, &o}
+	patched[t.Pointer()] = patchContext{targetBytes, originalBytes, targetAdjustBytes, incrStkPtr, &bridgePiece, &r, &o}
 	origins[o.Pointer()] = true
 	return true
 }
@@ -117,7 +117,7 @@ func doUnpatch(t uintptr, p patchContext) {
 	freeBridgePiece(*p.bridgeBytes)
 
 	delete(patched, t)
-	delete(origins, (*p.replacement).Pointer())
+	delete(origins, (*p.original).Pointer())
 }
 
 func copyToLocation(location uintptr, data []byte) {

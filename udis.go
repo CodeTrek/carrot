@@ -20,17 +20,17 @@ func udisDisas(data []byte) {
 	C.udis_disas(code, length)
 }
 
-func backupInstruction(location uintptr, minLen int, dataPtr uintptr) (code []byte, dataUsed []byte, srcCopiedLen int, moreStackPtr uintptr, funcEnded bool) {
-	v := C.udis_backup_instruction(*(**C.uint8_t)(unsafe.Pointer(&location)), 300, C.size_t(minLen), C.uintptr_t(dataPtr))
+func backupInstruction(src uintptr, jmpLen int) (code []byte, incrStk []byte, srcCopiedLen int, incrStkPtr uintptr, funcEnded bool) {
+	v := C.udis_backup_instruction(*(**C.uint8_t)(unsafe.Pointer(&src)), 300, C.size_t(jmpLen))
 	if v.success == 0 {
-		udisDisas(memoryAccess(location, 300))
+		udisDisas(memoryAccess(src, 300))
 		panic("backup instruction failed!")
 	}
 	code = make([]byte, int(v.copied_len))
-	dataUsed = make([]byte, int(v.data_len))
+	incrStk = make([]byte, int(v.incr_stack_len))
 	copy(code, memoryAccess(uintptr(unsafe.Pointer(&v.copied[0])), int(v.copied_len)))
-	copy(dataUsed, memoryAccess(uintptr(unsafe.Pointer(&v.data[0])), int(v.data_len)))
-	moreStackPtr = uintptr(v.adjust_stack_jmp)
+	copy(incrStk, memoryAccess(uintptr(unsafe.Pointer(&v.incr_stack[0])), int(v.incr_stack_len)))
+	incrStkPtr = uintptr(v.incr_stack_ptr)
 	srcCopiedLen = int(v.copied_src_len)
 	funcEnded = v.reach_end == 1
 	return

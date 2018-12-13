@@ -19,8 +19,12 @@ static void udis_disas(const uint8_t* code, size_t code_len)
 	udis_init(&u, code, code_len);
 
 	int len = 0;
+	int endmode = 0;
 	while(len = ud_disassemble(&u)) {
 		if (ud_insn_mnemonic(&u) == UD_Iint3) {
+			endmode += 1;
+		}
+		if (endmode > 10 || endmode > 0 && ud_insn_mnemonic(&u) != UD_Iint3) {
 			break;
 		}
 
@@ -49,7 +53,7 @@ static int64_t udis_real_target(ud_t* u, int n)
 	}
 }
 
-static udis_backup_instr_t udis_backup_instruction(const uint8_t* code, size_t len, size_t jmp_len, uintptr_t data_ptr)
+static udis_backup_instr_t udis_backup_instruction(const uint8_t* code, size_t len, size_t jmp_len)
 {
 	udis_backup_instr_t result;
 	memset(&result, 0, sizeof(result));
@@ -69,11 +73,8 @@ static udis_backup_instr_t udis_backup_instruction(const uint8_t* code, size_t l
 
 		if (result.copied_src_len < jmp_len) {
 			udis_copy_instruction_t cp_ins = {
-				data_ptr,
 				code + result.copied_src_len,
 				&result.copied[result.copied_len],
-				result.data,
-				&result.data_len
 			};
 			result.copied_len += copy_instruction(&u, &cp_ins);
 			result.copied_src_len += current_len;
@@ -88,7 +89,7 @@ static udis_backup_instr_t udis_backup_instruction(const uint8_t* code, size_t l
 		if (current_ins == UD_Ijbe) {
 			const struct ud_operand* opr = ud_insn_opr(&u, 0);
 			if (opr->type == UD_OP_IMM || opr->type == UD_OP_JIMM) {
-				result.adjust_stack_jmp = ud_syn_rel_target(&u, (struct ud_operand*)opr);
+				result.incr_stack_ptr = ud_syn_rel_target(&u, (struct ud_operand*)opr);
 			} else {
 				result.success = 0;
 			}
@@ -100,17 +101,20 @@ static udis_backup_instr_t udis_backup_instruction(const uint8_t* code, size_t l
 		}
 	}
 
-	if (result.adjust_stack_jmp > 0) {
-		udis_init(&u, (const uint8_t*)result.adjust_stack_jmp, 50);
+	if (result.incr_stack_ptr > 0) {
+		udis_init(&u, (const uint8_t*)result.incr_stack_ptr, 50);
 		ud_decode(&u);
 
-		if (ud_insn_mnemonic(&u) == UD_Icall) {
+		if (ud_insn_mnemonic(&u) != UD_Icall) {
+				result.success = 0;
+		} else {
 			int len = ud_insn_len(&u);
 			ud_decode(&u);
 			if (ud_insn_mnemonic(&u) != UD_Ijmp) {
 				result.success = 0;
 			} else {
-				result.adjust_stack_jmp += len;
+				result.incr_stack_len = len;
+				memcpy(result.incr_stack, (const uint8_t*)result.incr_stack_ptr, len);
 			}
 		}
 	}

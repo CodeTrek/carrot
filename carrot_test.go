@@ -8,41 +8,38 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var f1 = func() int {
-	return 1
-}
+var t1 = func() int { return 1 }
+var r1 = func() int { return 2 }
+var o1 = func() int { return 3 }
 
-var newF1 = func() int {
-	return 2
-}
+var t2 = func(p1 [2000]byte) int { fmt.Printf("%s%s%s%s", p1[0:1], p1[0:1], p1[0:1], p1[0:1]); return 1 }
+var r2 = func(p1 [2000]byte) int { return 2 }
+var o2 = func(p1 [2000]byte) int { return 3 }
 
-var oldF1 = func() int { return 3 }
+var t3 = func() {}
+var r3 = func() {}
+var o3 = func() {}
 
 func TestSample(t *testing.T) {
-	carrot.Patch(f1, newF1, oldF1)
-	assert.Equal(t, 2, f1())
-	assert.Equal(t, 1, oldF1())
+	carrot.Patch(t1, r1, o1)
+	assert.Equal(t, 2, t1())
+	assert.Equal(t, 1, o1())
 	carrot.UnpatchAll()
-	assert.Equal(t, 1, f1())
-	assert.Equal(t, 3, oldF1())
+	assert.Equal(t, 1, t1())
+	assert.Equal(t, 3, o1())
 }
-
-var f2 = func(p1 [2000]byte) int {
-	fmt.Printf("%s%s%s%s", p1[0:1], p1[0:1], p1[0:1], p1[0:1])
-	return 1
-}
-
-var newF2 = func(p1 [2000]byte) int {
-	return 2
-}
-
-var oldF2 = func(p1 [2000]byte) int { return 3 }
 
 func TestComplex(t *testing.T) {
-
 	var b = [2000]byte{0}
-	assert.True(t, carrot.Patch(f2, newF2, oldF2))
-	assert.Equal(t, 2, f2(b))
+	assert.True(t, carrot.Patch(t2, r2, o2))
+	assert.Equal(t, 2, t2(b))
 	carrot.UnpatchAll()
-	assert.Equal(t, 1, f2(b))
+	assert.Equal(t, 1, t2(b))
+}
+
+func TestMulti(t *testing.T) {
+	assert.True(t, carrot.Patch(t3, r3, o3))
+	assert.False(t, carrot.Patch(t3, r3, o3))
+	assert.Panics(t, func() { carrot.Patch(t1, r2, o1) })
+	assert.True(t, carrot.Patch(t2, r2, o2))
 }
