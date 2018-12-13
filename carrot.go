@@ -55,7 +55,7 @@ func Unpatch(target interface{}) {
 	defer lock.Unlock()
 
 	t := reflect.ValueOf(target)
-	if isPatched(t) {
+	if !isPatched(t) {
 		return
 	}
 

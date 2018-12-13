@@ -20,6 +20,10 @@ var t3 = func() {}
 var r3 = func() {}
 var o3 = func() {}
 
+var t4 = func() int { return 4 }
+var r4 = func() int { fmt.Println(""); return 5 }
+var o4 = func() int { return 6 }
+
 func TestSample(t *testing.T) {
 	carrot.Patch(t1, r1, o1)
 	assert.Equal(t, 2, t1())
@@ -42,4 +46,21 @@ func TestMulti(t *testing.T) {
 	assert.False(t, carrot.Patch(t3, r3, o3))
 	assert.Panics(t, func() { carrot.Patch(t1, r2, o1) })
 	assert.True(t, carrot.Patch(t2, r2, o2))
+
+	assert.True(t, carrot.Patch(t1, r1, o1))
+	assert.Equal(t, 2, t1())
+	assert.Equal(t, 2, r1())
+	assert.Equal(t, 1, o1())
+
+	assert.True(t, carrot.Patch(t4, r1, o4))
+
+	assert.Equal(t, 2, t4())
+	assert.Equal(t, 2, r1())
+	assert.Equal(t, 4, o4())
+
+	carrot.Unpatch(t1)
+
+	assert.Equal(t, 1, t1())
+	assert.Equal(t, 2, r1())
+	assert.Equal(t, 3, o1())
 }
