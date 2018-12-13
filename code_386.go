@@ -11,13 +11,3 @@ func jmpTo(to uintptr) []byte {
 		0xFF, 0xe2,     // jmp DWORD PTR [edx]
 	}
 }
-
-func movRAX(v uintptr) []byte {
-	return []byte{
-		0xB8,
-		byte(v),
-		byte(v >> 8),
-		byte(v >> 16),
-		byte(v >> 24), // mov rax,v
-	}
-}
