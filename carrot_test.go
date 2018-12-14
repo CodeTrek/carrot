@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/CodeTrek/carrot"
+	"../carrot"
 	"github.com/stretchr/testify/assert"
 )
 

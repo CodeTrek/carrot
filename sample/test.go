@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/CodeTrek/carrot"
+	"../../carrot"
 )
 
 var t1 = func() int { return 1 }
