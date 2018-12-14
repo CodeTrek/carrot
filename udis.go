@@ -1,13 +1,13 @@
 package carrot
 
 /*
-#include "thirdparty/udis86/libudis86/decode.c"
-#include "thirdparty/udis86/libudis86/itab.c"
-#include "thirdparty/udis86/libudis86/udis86.c"
-#include "thirdparty/udis86/libudis86/syn.c"
-#include "thirdparty/udis86/libudis86/syn-att.c"
-#include "udis_copy_instruction.c"
-#include "udis_code.c"
+#include "./thirdparty/udis86/libudis86/decode.c"
+#include "./thirdparty/udis86/libudis86/itab.c"
+#include "./thirdparty/udis86/libudis86/udis86.c"
+#include "./thirdparty/udis86/libudis86/syn.c"
+#include "./thirdparty/udis86/libudis86/syn-att.c"
+#include "./udis_copy_instruction.c"
+#include "./udis_code.c"
 */
 import "C"
 import (
